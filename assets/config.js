@@ -4,9 +4,9 @@
    ============================================================ */
 window.SITE_CONFIG = {
   // 你的 GitHub 用户名
-  owner: "YOUR_GITHUB_USERNAME",
+  owner: "etianwang",
   // 仓库名，通常是 用户名.github.io
-  repo: "YOUR_GITHUB_USERNAME.github.io",
+  repo: "etianwang.github.io",
   // 分支名，通常是 main
   branch: "main",
   // 文章存放目录
@@ -15,7 +15,7 @@ window.SITE_CONFIG = {
   imagesDir: "images",
   // 云函数地址（部署 Cloudflare Worker 后，把它的访问地址填在这里）
   // 例如 https://my-blog-publish.yourname.workers.dev
-  workerUrl: "https://YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev",
+  workerUrl: "https://githubio.etianwang.workers.dev",
   // 站点标题，显示在顶部导航
-  siteTitle: "我的备忘录"
+  siteTitle: "花筏　カオル　メモ帳"
 };
