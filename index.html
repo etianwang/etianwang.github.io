@@ -88,12 +88,10 @@ function doLogout() {
 function renderTaxonomy() {
   const { categories, tags } = Common.summarizeTaxonomy(allPosts);
 
-  document.getElementById("totalCount").textContent = allPosts.length || "";
-
   const catList = document.getElementById("catList");
   catList.innerHTML = `
     <div class="cat-item ${activeCategory === "" ? "active" : ""}" data-cat="">
-      <span>全部</span><span class="count">${allPosts.length}</span>
+      <span>全部</span><span class="count" id="totalCount">${allPosts.length}</span>
     </div>
   ` + categories.map(c => `
     <div class="cat-item ${activeCategory === c.name ? "active" : ""}" data-cat="${escapeHtml(c.name)}">
