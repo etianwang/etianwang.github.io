@@ -18,4 +18,6 @@ window.SITE_CONFIG = {
   workerUrl: "https://githubio.etianwang.workers.dev",
   // 站点标题，显示在顶部导航
   siteTitle: "花筏　カオル　メモ帳"
+  // 站点描述，可用于首页副标题、SEO meta 等场景
+  siteDescription: "记录技术与生活的备忘录"
 };

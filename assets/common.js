@@ -146,7 +146,18 @@ const Common = (() => {
     return plain.length > len ? plain.slice(0, len) + "..." : plain;
   }
 
-  // ---------- 简单 toast ----------
+  // ---------- 站点标题统一应用 ----------
+  // 把 config.js 里的 siteTitle 应用到：
+  // 1. 浏览器标签标题（<title>），可传 suffix 拼出"文章标题 - 站点标题"这种格式
+  // 2. 页面里 class="site-title" 的元素（导航栏左上角站名）
+  function applySiteIdentity(titlePrefix) {
+    document.title = titlePrefix ? `${titlePrefix} - ${cfg.siteTitle}` : cfg.siteTitle;
+    document.querySelectorAll(".site-title").forEach(el => {
+      el.textContent = cfg.siteTitle;
+    });
+  }
+
+  // ---------- toast ----------
   function toast(msg, isError = false) {
     const el = document.createElement("div");
     el.className = "toast" + (isError ? " error" : "");
@@ -179,6 +190,7 @@ const Common = (() => {
     summarizeTaxonomy,
     excerpt,
     colorFor,
+    applySiteIdentity,
     toast,
     isLoggedIn,
     setLoggedIn

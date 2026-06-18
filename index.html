@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>花筏　カオル　メモ帳</title>
+<title>加载中...</title>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
 
 <div class="topbar">
-  <div class="site-title" onclick="location.href='index.html'">花筏　カオル　メモ帳</div>
-  <div class="nav-right">
+  <div class="site-title" onclick="location.href='index.html'"></div>
+  <div class="nav-right" id="navRight">
     <span onclick="location.href='login.html'" id="adminEntry">
       <i class="icon-btn" title="管理员入口">🔒</i>
     </span>
@@ -47,6 +47,8 @@ let activeCategory = "";
 let activeTags = new Set();
 
 async function init() {
+  Common.applySiteIdentity();
+  renderNavRight();
   try {
     allPosts = await Common.getAllPosts();
     renderTaxonomy();
@@ -55,6 +57,32 @@ async function init() {
     document.getElementById("mainContent").innerHTML =
       `<div class="empty-state">加载文章失败：${err.message}<br>请检查 assets/config.js 中的仓库信息是否填写正确。</div>`;
   }
+}
+
+function renderNavRight() {
+  const navRight = document.getElementById("navRight");
+  if (Common.isLoggedIn()) {
+    navRight.innerHTML = `
+      <span onclick="location.href='edit.html'" title="新增文章">
+        <i class="icon-btn">＋</i>
+      </span>
+      <span onclick="doLogout()" title="退出登录">
+        <i class="icon-btn">⏏</i>
+      </span>
+    `;
+  } else {
+    navRight.innerHTML = `
+      <span onclick="location.href='login.html'" id="adminEntry">
+        <i class="icon-btn" title="管理员入口">🔒</i>
+      </span>
+    `;
+  }
+}
+
+function doLogout() {
+  Common.setLoggedIn(false);
+  Common.toast("已退出登录");
+  renderNavRight();
 }
 
 function renderTaxonomy() {

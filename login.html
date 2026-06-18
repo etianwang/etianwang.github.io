@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>登录 - 我的备忘录</title>
+<title>加载中...</title>
 <link rel="stylesheet" href="assets/style.css">
 <style>
   .login-wrap {
@@ -52,7 +52,7 @@
 <body>
 
 <div class="topbar">
-  <div class="site-title" onclick="location.href='index.html'">我的备忘录</div>
+  <div class="site-title" onclick="location.href='index.html'"></div>
 </div>
 
 <div class="login-wrap">
@@ -81,6 +81,8 @@
 <script src="assets/config.js"></script>
 <script src="assets/common.js"></script>
 <script>
+Common.applySiteIdentity("登录");
+
 const passwordInput = document.getElementById("passwordInput");
 const loginBtn = document.getElementById("loginBtn");
 const loginError = document.getElementById("loginError");
