@@ -17,7 +17,7 @@ window.SITE_CONFIG = {
   // 例如 https://my-blog-publish.yourname.workers.dev
   workerUrl: "https://githubio.etianwang.workers.dev",
   // 站点标题，显示在顶部导航
-  siteTitle: "花筏　カオル　メモ帳",
+  siteTitle: "花筏 カオル メモ帳",
   // 站点描述，可用于首页副标题、SEO meta 等场景
   siteDescription: "个人备忘录"
 };
