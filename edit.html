@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>编辑文章 - 我的备忘录</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+<style>
+  .edit-wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 20px 24px 60px;
+  }
+  .edit-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .edit-row > div { flex: 1; }
+  .editor-area {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  textarea#bodyInput {
+    width: 100%;
+    min-height: 360px;
+    font-family: var(--font-mono, "SF Mono", Menlo, Consolas, monospace);
+    font-size: 13px;
+    line-height: 1.7;
+    resize: vertical;
+  }
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  .toolbar-actions { display: flex; gap: 10px; }
+  .upload-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-hint);
+    margin-top: 8px;
+  }
+  .upload-row input[type="file"] { display: none; }
+  .upload-label {
+    cursor: pointer;
+    color: var(--accent-blue);
+    border: 0.5px solid var(--border-color);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+  }
+  .upload-label:hover { border-color: var(--accent-blue); }
+  .preview-pane {
+    border: 0.5px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    min-height: 360px;
+    background: var(--bg-input);
+    font-size: 14px;
+    line-height: 1.8;
+  }
+  .preview-pane img { max-width: 100%; border-radius: var(--radius-md); }
+  .preview-pane pre { background: var(--bg-card); padding: 10px; border-radius: 6px; overflow-x: auto; }
+  .mode-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+  .mode-tab {
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--text-sub);
+  }
+  .mode-tab.active { background: var(--accent-blue-bg); color: var(--accent-blue); }
+  .danger-zone {
+    margin-top: 30px;
+    padding-top: 18px;
+    border-top: 0.5px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="back-link" style="display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--text-sub);cursor:pointer;" onclick="location.href='index.html'">← 返回首页</span>
+  <div class="nav-right">
+    <span id="userTag" style="font-size:12px;color:var(--text-hint);"></span>
+    <span onclick="logout()" style="cursor:pointer;">退出登录</span>
+  </div>
+</div>
+
+<div class="edit-wrap" id="editWrap">
+  <div class="loading-state">正在校验登录状态...</div>
+</div>
+
+<script src="assets/config.js"></script>
+<script src="assets/common.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const editFilename = params.get("file"); // 有值=编辑已有文章，无值=新建
+let originalSha = null;
+let mode = "write"; // write | preview
+
+function logout() {
+  Common.setLoggedIn(false);
+  location.href = "index.html";
+}
+
+async function init() {
+  if (!Common.isLoggedIn()) {
+    location.href = "login.html";
+    return;
+  }
+  document.getElementById("userTag").textContent = "已登录";
+  await renderForm();
+}
+
+async function renderForm() {
+  let post = { title: "", date: todayStr(), category: "", tags: "", body: "" };
+
+  if (editFilename) {
+    try {
+      const posts = await Common.getAllPosts(true);
+      const found = posts.find(p => p.filename === editFilename);
+      if (found) {
+        post = {
+          title: found.title,
+          date: found.date,
+          category: found.category,
+          tags: found.tags.join(", "),
+          body: found.body
+        };
+        originalSha = found.sha;
+      }
+    } catch (err) {
+      Common.toast("加载原文失败：" + err.message, true);
+    }
+  }
+
+  document.getElementById("editWrap").innerHTML = `
+    <div class="toolbar">
+      <div style="font-size:16px;font-weight:600;color:var(--text-main);">
+        ${editFilename ? "编辑文章" : "新增文章"}
+      </div>
+      <div class="toolbar-actions">
+        ${editFilename ? `<button class="btn btn-danger" onclick="deletePost()">删除文章</button>` : ""}
+        <button class="btn btn-primary" id="publishBtn" onclick="publish()">发布到仓库</button>
+      </div>
+    </div>
+
+    <div class="edit-row">
+      <div>
+        <label class="field-label">标题</label>
+        <input type="text" id="titleInput" placeholder="文章标题" value="${escapeAttr(post.title)}">
+      </div>
+      <div style="flex: 0 0 160px;">
+        <label class="field-label">日期</label>
+        <input type="date" id="dateInput" value="${escapeAttr(post.date)}">
+      </div>
+    </div>
+
+    <div class="edit-row">
+      <div>
+        <label class="field-label">分类（单个，可直接输入新分类）</label>
+        <input type="text" id="categoryInput" placeholder="例如：Linux" value="${escapeAttr(post.category)}" list="categorySuggestions">
+        <datalist id="categorySuggestions"></datalist>
+      </div>
+      <div>
+        <label class="field-label">标签（逗号分隔，可直接输入新标签）</label>
+        <input type="text" id="tagsInput" placeholder="例如：Wayland, 备忘" value="${escapeAttr(post.tags)}">
+      </div>
+    </div>
+
+    <div class="mode-tabs">
+      <div class="mode-tab active" id="tabWrite" onclick="switchMode('write')">编辑</div>
+      <div class="mode-tab" id="tabPreview" onclick="switchMode('preview')">预览</div>
+    </div>
+
+    <div class="editor-area">
+      <textarea id="bodyInput" placeholder="正文，支持 Markdown 语法...">${escapeHtml(post.body)}</textarea>
+      <div id="previewPane" class="preview-pane" style="display:none;"></div>
+
+      <div class="upload-row">
+        <label class="upload-label" for="imageFileInput">📷 插入图片</label>
+        <input type="file" id="imageFileInput" accept="image/*" onchange="handleImageUpload(event)">
+        <span id="uploadStatus"></span>
+      </div>
+    </div>
+  `;
+
+  loadCategorySuggestions();
+}
+
+async function loadCategorySuggestions() {
+  try {
+    const posts = await Common.getAllPosts();
+    const { categories } = Common.summarizeTaxonomy(posts);
+    document.getElementById("categorySuggestions").innerHTML =
+      categories.map(c => `<option value="${escapeAttr(c.name)}">`).join("");
+  } catch (e) { /* 忽略 */ }
+}
+
+function switchMode(target) {
+  mode = target;
+  document.getElementById("tabWrite").classList.toggle("active", target === "write");
+  document.getElementById("tabPreview").classList.toggle("active", target === "preview");
+  document.getElementById("bodyInput").style.display = target === "write" ? "block" : "none";
+  const pane = document.getElementById("previewPane");
+  pane.style.display = target === "preview" ? "block" : "none";
+  if (target === "preview") {
+    pane.innerHTML = marked.parse(document.getElementById("bodyInput").value || "*（空）*");
+  }
+}
+
+async function handleImageUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById("uploadStatus");
+  statusEl.textContent = "上传中...";
+
+  try {
+    const base64 = await fileToBase64(file);
+    const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+    const filename = `${Date.now()}_${safeName}`;
+
+    const res = await fetch(`${Common.cfg.workerUrl}/upload-image`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: getSessionToken(),
+        filename,
+        contentBase64: base64
+      })
+    });
+    const data = await res.json();
+
+    if (!res.ok || !data.ok) {
+      throw new Error(data.message || "上传失败");
+    }
+
+    const textarea = document.getElementById("bodyInput");
+    const insertText = `\n![${file.name}](${Common.cfg.imagesDir}/${filename})\n`;
+    insertAtCursor(textarea, insertText);
+    statusEl.textContent = "已插入";
+    setTimeout(() => statusEl.textContent = "", 2000);
+  } catch (err) {
+    statusEl.textContent = "";
+    Common.toast("图片上传失败：" + err.message, true);
+  } finally {
+    event.target.value = "";
+  }
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function insertAtCursor(textarea, text) {
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  textarea.value = textarea.value.slice(0, start) + text + textarea.value.slice(end);
+  textarea.selectionStart = textarea.selectionEnd = start + text.length;
+}
+
+async function publish() {
+  const title = document.getElementById("titleInput").value.trim();
+  const date = document.getElementById("dateInput").value.trim();
+  const category = document.getElementById("categoryInput").value.trim();
+  const tags = document.getElementById("tagsInput").value.trim();
+  const body = document.getElementById("bodyInput").value;
+
+  if (!title) { Common.toast("请填写标题", true); return; }
+  if (!date) { Common.toast("请选择日期", true); return; }
+
+  const frontmatter = Common.buildFrontmatter({ title, date, category, tags });
+  const fullContent = `${frontmatter}\n\n${body}\n`;
+
+  const filename = editFilename || `${date}-${slugify(title)}.md`;
+
+  const btn = document.getElementById("publishBtn");
+  btn.disabled = true;
+  btn.textContent = "发布中...";
+
+  try {
+    const res = await fetch(`${Common.cfg.workerUrl}/save-post`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: getSessionToken(),
+        filename,
+        content: fullContent,
+        sha: originalSha || undefined
+      })
+    });
+    const data = await res.json();
+
+    if (res.status === 401) {
+      Common.toast("登录已过期，请重新登录", true);
+      Common.setLoggedIn(false);
+      setTimeout(() => location.href = "login.html", 1200);
+      return;
+    }
+
+    if (!res.ok || !data.ok) {
+      throw new Error(data.message || "发布失败");
+    }
+
+    Common.invalidateCache();
+    Common.toast("发布成功");
+    setTimeout(() => {
+      location.href = `post.html?file=${encodeURIComponent(filename)}`;
+    }, 600);
+  } catch (err) {
+    Common.toast("发布失败：" + err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "发布到仓库";
+  }
+}
+
+async function deletePost() {
+  if (!confirm("确定要删除这篇文章吗？此操作不可撤销。")) return;
+
+  try {
+    const res = await fetch(`${Common.cfg.workerUrl}/delete-post`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: getSessionToken(),
+        filename: editFilename,
+        sha: originalSha
+      })
+    });
+    const data = await res.json();
+
+    if (res.status === 401) {
+      Common.toast("登录已过期，请重新登录", true);
+      Common.setLoggedIn(false);
+      setTimeout(() => location.href = "login.html", 1200);
+      return;
+    }
+
+    if (!res.ok || !data.ok) {
+      throw new Error(data.message || "删除失败");
+    }
+    Common.invalidateCache();
+    Common.toast("已删除");
+    setTimeout(() => location.href = "index.html", 600);
+  } catch (err) {
+    Common.toast("删除失败：" + err.message, true);
+  }
+}
+
+// 登录成功后，云函数会返回一个有时效的会话令牌（不是密码、不是 GitHub token）
+// 写操作都带着这个令牌，由云函数校验令牌有效性后再去操作 GitHub
+function getSessionToken() {
+  return sessionStorage.getItem("blog_session_token") || "";
+}
+
+function slugify(str) {
+  return str
+    .toLowerCase()
+    .replace(/[^\w\u4e00-\u9fa5]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 50) || "post";
+}
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str ?? "";
+  return div.innerHTML;
+}
+function escapeAttr(str) {
+  return (str ?? "").replace(/"/g, "&quot;");
+}
+
+init();
+</script>
+
+</body>
+</html>

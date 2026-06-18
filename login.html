@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 - 我的备忘录</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .login-wrap {
+    min-height: calc(100vh - 56px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .login-card {
+    width: 320px;
+    background: var(--bg-card);
+    border: 0.5px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 30px 28px;
+  }
+  .login-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-main);
+  }
+  .login-sub {
+    font-size: 12px;
+    color: var(--text-hint);
+    margin-bottom: 22px;
+  }
+  .login-field { margin-bottom: 16px; }
+  .login-hint {
+    font-size: 11px;
+    color: var(--text-faint);
+    text-align: center;
+    line-height: 1.6;
+    margin-top: 14px;
+  }
+  .login-error {
+    font-size: 12px;
+    color: var(--danger);
+    margin-bottom: 12px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="site-title" onclick="location.href='index.html'">我的备忘录</div>
+</div>
+
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-head">🔒 管理员登录</div>
+    <div class="login-sub">输入密码以编辑文章</div>
+
+    <div class="login-error" id="loginError"></div>
+
+    <div class="login-field">
+      <label class="field-label">密码</label>
+      <input type="password" id="passwordInput" placeholder="请输入密码" autocomplete="current-password">
+    </div>
+
+    <button class="btn btn-primary" style="width:100%; justify-content:center;" id="loginBtn" onclick="doLogin()">
+      登录
+    </button>
+
+    <div class="login-hint">
+      密码经云函数校验，不在浏览器内保存或比对<br>
+      登录状态仅在本次浏览器标签页内有效
+    </div>
+  </div>
+</div>
+
+<script src="assets/config.js"></script>
+<script src="assets/common.js"></script>
+<script>
+const passwordInput = document.getElementById("passwordInput");
+const loginBtn = document.getElementById("loginBtn");
+const loginError = document.getElementById("loginError");
+
+passwordInput.addEventListener("keydown", e => {
+  if (e.key === "Enter") doLogin();
+});
+
+async function doLogin() {
+  const password = passwordInput.value.trim();
+  if (!password) {
+    showError("请输入密码");
+    return;
+  }
+
+  loginBtn.disabled = true;
+  loginBtn.textContent = "验证中...";
+  loginError.style.display = "none";
+
+  try {
+    const res = await fetch(`${Common.cfg.workerUrl}/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password })
+    });
+    const data = await res.json();
+
+    if (res.ok && data.ok && data.token) {
+      Common.setLoggedIn(true, data.token);
+      Common.toast("登录成功");
+      location.href = "index.html";
+    } else {
+      showError(data.message || "密码错误");
+    }
+  } catch (err) {
+    showError("无法连接验证服务，请检查网络或云函数地址是否配置正确");
+  } finally {
+    loginBtn.disabled = false;
+    loginBtn.textContent = "登录";
+  }
+}
+
+function showError(msg) {
+  loginError.textContent = msg;
+  loginError.style.display = "block";
+}
+</script>
+
+</body>
+</html>

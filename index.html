@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的备忘录</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="site-title" onclick="location.href='index.html'">我的备忘录</div>
+  <div class="nav-right">
+    <span onclick="location.href='login.html'" id="adminEntry">
+      <i class="icon-btn" title="管理员入口">🔒</i>
+    </span>
+  </div>
+</div>
+
+<div class="layout">
+
+  <div class="sidebar left">
+    <div class="sidebar-title">分类</div>
+    <div class="cat-list" id="catList">
+      <div class="cat-item active" data-cat="">
+        <span>全部</span><span class="count" id="totalCount"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-content" id="mainContent">
+    <div class="loading-state">正在加载文章...</div>
+  </div>
+
+  <div class="sidebar right">
+    <div class="sidebar-title">标签</div>
+    <div class="tag-cloud" id="tagCloud"></div>
+  </div>
+
+</div>
+
+<script src="assets/config.js"></script>
+<script src="assets/common.js"></script>
+<script>
+let allPosts = [];
+let activeCategory = "";
+let activeTags = new Set();
+
+async function init() {
+  try {
+    allPosts = await Common.getAllPosts();
+    renderTaxonomy();
+    renderPosts();
+  } catch (err) {
+    document.getElementById("mainContent").innerHTML =
+      `<div class="empty-state">加载文章失败：${err.message}<br>请检查 assets/config.js 中的仓库信息是否填写正确。</div>`;
+  }
+}
+
+function renderTaxonomy() {
+  const { categories, tags } = Common.summarizeTaxonomy(allPosts);
+
+  document.getElementById("totalCount").textContent = allPosts.length || "";
+
+  const catList = document.getElementById("catList");
+  catList.innerHTML = `
+    <div class="cat-item ${activeCategory === "" ? "active" : ""}" data-cat="">
+      <span>全部</span><span class="count">${allPosts.length}</span>
+    </div>
+  ` + categories.map(c => `
+    <div class="cat-item ${activeCategory === c.name ? "active" : ""}" data-cat="${escapeHtml(c.name)}">
+      <span>${escapeHtml(c.name)}</span><span class="count">${c.count}</span>
+    </div>
+  `).join("");
+
+  catList.querySelectorAll(".cat-item").forEach(el => {
+    el.addEventListener("click", () => {
+      activeCategory = el.dataset.cat;
+      renderTaxonomy();
+      renderPosts();
+    });
+  });
+
+  const tagCloud = document.getElementById("tagCloud");
+  if (tags.length === 0) {
+    tagCloud.innerHTML = `<span style="color:var(--text-faint); font-size:12px;">暂无标签</span>`;
+  } else {
+    tagCloud.innerHTML = tags.map(t => `
+      <span class="tag-chip ${activeTags.has(t.name) ? "active" : ""}" data-tag="${escapeHtml(t.name)}">
+        ${escapeHtml(t.name)} ${t.count}
+      </span>
+    `).join("");
+    tagCloud.querySelectorAll(".tag-chip").forEach(el => {
+      el.addEventListener("click", () => {
+        const tag = el.dataset.tag;
+        if (activeTags.has(tag)) activeTags.delete(tag);
+        else activeTags.add(tag);
+        renderTaxonomy();
+        renderPosts();
+      });
+    });
+  }
+}
+
+function renderPosts() {
+  let filtered = allPosts;
+  if (activeCategory) {
+    filtered = filtered.filter(p => p.category === activeCategory);
+  }
+  if (activeTags.size > 0) {
+    filtered = filtered.filter(p => p.tags.some(t => activeTags.has(t)));
+  }
+
+  const main = document.getElementById("mainContent");
+  if (filtered.length === 0) {
+    main.innerHTML = `<div class="empty-state">没有符合条件的文章</div>`;
+    return;
+  }
+
+  main.innerHTML = filtered.map(p => `
+    <div class="post-card" onclick="location.href='post.html?file=${encodeURIComponent(p.filename)}'">
+      <div class="post-meta">
+        <span class="cat-pill">${escapeHtml(p.category)}</span>
+        <span class="post-date">${escapeHtml(p.date)}</span>
+      </div>
+      <div class="post-title">${escapeHtml(p.title)}</div>
+      <div class="post-excerpt">${escapeHtml(Common.excerpt(p.body))}</div>
+      ${p.tags.length ? `<div class="post-tags">${p.tags.map(t => `<span class="tag-pill">${escapeHtml(t)}</span>`).join("")}</div>` : ""}
+    </div>
+  `).join("");
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str ?? "";
+  return div.innerHTML;
+}
+
+init();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文章 - 我的备忘录</title>
+<link rel="stylesheet" href="assets/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+<style>
+  .article-wrap {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 28px 24px 60px;
+  }
+  .article-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 14px 0 18px;
+    line-height: 1.4;
+  }
+  .article-tags {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 26px;
+    flex-wrap: wrap;
+  }
+  .article-body {
+    font-size: 15px;
+    line-height: 1.85;
+    color: var(--text-body);
+  }
+  .article-body h1, .article-body h2, .article-body h3 {
+    color: var(--text-main);
+    margin: 28px 0 14px;
+    font-weight: 600;
+  }
+  .article-body h1 { font-size: 19px; }
+  .article-body h2 { font-size: 17px; }
+  .article-body h3 { font-size: 15px; }
+  .article-body p { margin: 0 0 16px; }
+  .article-body img {
+    max-width: 100%;
+    border-radius: var(--radius-md);
+    border: 0.5px solid var(--border-color);
+    display: block;
+    margin: 16px 0;
+  }
+  .article-body pre {
+    background: var(--bg-input);
+    border: 0.5px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    overflow-x: auto;
+    font-size: 13px;
+  }
+  .article-body code {
+    background: var(--bg-input);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .article-body pre code { background: none; padding: 0; }
+  .article-body blockquote {
+    border-left: 3px solid var(--border-hover);
+    margin: 16px 0;
+    padding: 4px 16px;
+    color: var(--text-sub);
+  }
+  .article-body ul, .article-body ol {
+    margin: 0 0 16px;
+    padding-left: 22px;
+  }
+  .article-body a { color: var(--accent-blue); text-decoration: underline; }
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--text-sub);
+    cursor: pointer;
+  }
+  .back-link:hover { color: var(--text-main); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="back-link" onclick="location.href='index.html'">← 返回首页</span>
+  <div class="nav-right">
+    <span id="editEntry" style="display:none;" onclick="goEdit()">
+      <i class="icon-btn" title="编辑">✎</i>
+    </span>
+  </div>
+</div>
+
+<div class="article-wrap" id="articleWrap">
+  <div class="loading-state">正在加载文章...</div>
+</div>
+
+<script src="assets/config.js"></script>
+<script src="assets/common.js"></script>
+<script>
+const params = new URLSearchParams(location.search);
+const filename = params.get("file");
+
+async function init() {
+  if (!filename) {
+    document.getElementById("articleWrap").innerHTML = `<div class="empty-state">未指定文章</div>`;
+    return;
+  }
+  try {
+    const posts = await Common.getAllPosts();
+    const post = posts.find(p => p.filename === filename);
+    if (!post) {
+      document.getElementById("articleWrap").innerHTML = `<div class="empty-state">文章不存在</div>`;
+      return;
+    }
+    render(post);
+    if (Common.isLoggedIn()) {
+      document.getElementById("editEntry").style.display = "inline-flex";
+    }
+  } catch (err) {
+    document.getElementById("articleWrap").innerHTML =
+      `<div class="empty-state">加载失败：${err.message}</div>`;
+  }
+}
+
+function render(post) {
+  const html = marked.parse(post.body || "");
+  document.title = post.title + " - 我的备忘录";
+  document.getElementById("articleWrap").innerHTML = `
+    <div class="post-meta">
+      <span class="cat-pill">${escapeHtml(post.category)}</span>
+      <span class="post-date">${escapeHtml(post.date)}</span>
+    </div>
+    <div class="article-title">${escapeHtml(post.title)}</div>
+    ${post.tags.length ? `<div class="article-tags">${post.tags.map(t => `<span class="tag-pill">${escapeHtml(t)}</span>`).join("")}</div>` : ""}
+    <div class="article-body">${html}</div>
+  `;
+}
+
+function goEdit() {
+  location.href = `edit.html?file=${encodeURIComponent(filename)}`;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str ?? "";
+  return div.innerHTML;
+}
+
+init();
+</script>
+
+</body>
+</html>
