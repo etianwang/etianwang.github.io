@@ -50,22 +50,24 @@
   .upload-label {
     cursor: pointer;
     color: var(--accent-blue);
-    border: 0.5px solid var(--border-color);
+    border: 0.5px solid var(--glass-border);
     padding: 6px 12px;
     border-radius: var(--radius-sm);
   }
   .upload-label:hover { border-color: var(--accent-blue); }
   .preview-pane {
-    border: 0.5px solid var(--border-color);
+    border: 0.5px solid var(--glass-border);
     border-radius: var(--radius-md);
     padding: 16px;
     min-height: 360px;
     background: var(--bg-input);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     font-size: 14px;
     line-height: 1.8;
   }
   .preview-pane img { max-width: 100%; border-radius: var(--radius-md); }
-  .preview-pane pre { background: var(--bg-card); padding: 10px; border-radius: 6px; overflow-x: auto; }
+  .preview-pane pre { background: var(--glass-bg); padding: 10px; border-radius: 6px; overflow-x: auto; }
   .mode-tabs {
     display: flex;
     gap: 4px;
@@ -82,7 +84,7 @@
   .danger-zone {
     margin-top: 30px;
     padding-top: 18px;
-    border-top: 0.5px solid var(--border-color);
+    border-top: 0.5px solid var(--glass-border);
     display: flex;
     justify-content: flex-end;
   }
